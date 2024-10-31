@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System głosowania</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        .container { margin: 0 auto; padding: 20px; width: 100%; max-width: 500px; }
+        .result { font-weight: bold; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Głosowanie</h1>
+        <input type="text" id="tokenInput" placeholder="Wprowadź token">
+        <button onclick="login()">Zaloguj się</button>
+        <div id="votingSection" style="display:none;">
+            <h2>Wybierz opcję</h2>
+            <button onclick="vote('Opcja A')">Opcja A</button>
+            <button onclick="vote('Opcja B')">Opcja B</button>
+        </div>
+        <div id="results" class="result"></div>
+    </div>
+
+    <script>
+        // Firebase config (wstaw dane konfiguracyjne Firebase swojego projektu)
+        const firebaseConfig = {
+            apiKey: "TWÓJ_API_KEY",
+            authDomain: "TWÓJ_AUTH_DOMAIN",
+            projectId: "TWÓJ_PROJECT_ID",
+            storageBucket: "TWÓJ_STORAGE_BUCKET",
+            messagingSenderId: "TWÓJ_MESSAGING_SENDER_ID",
+            appId: "TWÓJ_APP_ID"
+        };
+        firebase.initializeApp(firebaseConfig);
+
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        async function login() {
+            const token = document.getElementById('tokenInput').value;
+            if (token === "UNIKALNY_TOKEN") { // zamień na właściwy warunek tokena
+                await auth.signInAnonymously();
+                document.getElementById('votingSection').style.display = 'block';
+                document.getElementById('tokenInput').style.display = 'none';
+            } else {
+                alert("Nieprawidłowy token.");
+            }
+        }
+
+        async function vote(option) {
+            const user = auth.currentUser;
+            if (user) {
+                await db.collection("votes").add({
+                    userId: user.uid,
+                    option: option,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                alert("Twój głos został oddany na: " + option);
+                displayResults();
+            } else {
+                alert("Zaloguj się, aby oddać głos.");
+            }
+        }
+
+        async function displayResults() {
+            const resultsRef = db.collection("votes");
+            const snapshot = await resultsRef.get();
+            let optionACount = 0, optionBCount = 0;
+
+            snapshot.forEach(doc => {
+                if (doc.data().option === "Opcja A") optionACount++;
+                else if (doc.data().option === "Opcja B") optionBCount++;
+            });
+
+            document.getElementById('results').innerHTML =
+                `Opcja A: ${optionACount} głosów<br>Opcja B: ${optionBCount} głosów`;
+        }
+
+        auth.onAuthStateChanged(user => {
+            if (user) displayResults();
+        });
+    </script>
+</body>
+</html>
